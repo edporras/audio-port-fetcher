@@ -67,6 +67,11 @@
        ring/form-encode
        (str audio-port-url "?op=series&series=")))
 
+(defn trim-text
+  "Removes surrounding whitespace found in site text."
+  [text]
+  (string/trim (string/replace text " " "")))
+
 (def content-disposition-file-pattern (re-pattern "filename=([\\w]+\\.[\\p{Alnum}]+)"))
 (defn resp->filename
   "Extract the filename from the response headers. Generates a sha-256 name is filename is not found."
@@ -112,9 +117,7 @@
   [[_ sub-row-2]]
   (->> (elem/find-by-xpath* sub-row-2 "td[contains(@class, 'boxSeparate')]")
        (drop 1) ;; got four cells, first is empty for spacing
-       (mapv #(-> (elem/text %)
-                  (string/replace " " "")
-                  string/trim))))
+       (mapv #(trim-text (elem/text %)))))
 
 (defn fetch-program-episode
   "Fetches the episode in the given data."
@@ -135,8 +138,7 @@
       first
       elem/text
       (string/replace "Results from Series:" "")
-      (string/replace " " "")
-      (string/trim)))
+      trim-text))
 
 (defn fetch-program-data
   "Navigates to the program's page and extracts the episode
