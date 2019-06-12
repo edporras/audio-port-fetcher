@@ -1,17 +1,16 @@
 (ns audio-port-fetcher.core
-  (:require [clojure.java.io       :as io]
-            [clojure.string        :as string]
-            [clojure.edn           :as edn]
-            [clojure.tools.cli     :refer [parse-opts]]
-            [clj-http.client       :as client]
-            [clj-http.cookies      :as cookies]
-            [digest                :refer [sha-256]]
-            [ring.util.codec       :as ring]
-            [sparkledriver.element :as elem]
-            [sparkledriver.cookies :refer [browser-cookies->map]]
-            [sparkledriver.browser :refer [with-browser make-browser fetch! execute-script]]
-            [taoensso.timbre       :as timbre
-             :refer [trace info warn error fatal]])
+  (:require [clojure.java.io         :as io]
+            [clojure.string          :as string]
+            [clojure.edn             :as edn]
+            [clj-http.client         :as client]
+            [clj-http.cookies        :as cookies]
+            [digest                  :refer [sha-256]]
+            [ring.util.codec         :as ring]
+            [sparkledriver.element   :as elem]
+            [sparkledriver.cookies   :refer [browser-cookies->map]]
+            [sparkledriver.browser   :refer [with-browser make-browser fetch! execute-script]]
+            [taoensso.timbre         :as timbre :refer [trace info warn error fatal]]
+            [audio-port-fetcher.init :refer [validate-args exit]])
   (:gen-class))
 
 (def audio-port-url "https://www.audioport.org/")
@@ -170,47 +169,6 @@
       (-> (login browser (config :credentials))
           (fetch-program-files program-list req-programs opts)))))
 
-(def cli-options
-  [["-h" "--help"]])
-
-(defn usage [options-summary]
-  (->> ["AudioPort.org Program Fetcher"
-        ""
-        "Usage: audio-port-fetcher [options] action"
-        ""
-        "Options:"
-        options-summary
-        ""
-        "Actions:"
-        "  fetch    Fetch a program's audio file."]
-       (string/join \newline)))
-
-(defn error-msg [errors]
-  (str "The following errors occurred while parsing your command:\n\n"
-       (string/join \newline errors)))
-
-(defn validate-args
-  "Validate command line arguments. Either return a map indicating the program
-  should exit (with a error message, and optional ok status), or a map
-  indicating the action the program should take and the options provided."
-  [args]
-  (let [{:keys [options arguments errors summary]} (parse-opts args cli-options)]
-    (cond
-      (:help options) ; help => exit OK with usage summary
-      {:exit-message (usage summary) :ok? true}
-      errors ; errors => exit with description of errors
-      {:exit-message (error-msg errors)}
-      ;; custom validation on arguments
-      (and (> (count arguments) 1)
-           (#{"fetch"} (first arguments)))
-      {:action (first arguments) :options options :programs (set (map keyword (rest arguments)))}
-      :else ; failed custom validation => exit with usage summary
-      {:exit-message (usage summary)})))
-
-(defn exit [status msg]
-  (fatal msg)
-  (System/exit status)) ;; TODO: disable on repl
-
 (defn -main
   [& args]
   (let [{:keys [action options programs exit-message ok?]} (validate-args args)]
@@ -241,11 +199,6 @@
       elem/text)
 
   (fetch-program-files browser (config :programs) [:rnrh] {})
-
-  (let [arg-list ["fetch" "rnrh" "wv"]]
-    #_(parse-opts arg-list cli-options)
-    (let [{:keys [action options programs exit-message ok?]} (validate-args arg-list)]
-      (fetch-programs programs options)))
 
   (-main "fetch rnrh")
 
