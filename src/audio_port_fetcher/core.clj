@@ -22,7 +22,7 @@
   (with-open [r (io/reader file)]
     (edn/read (java.io.PushbackReader. r))))
 
-(defn- screenshot
+(defn screenshot
   "Take a screenshot and save it to the CWD."
   [browser]
   (-> (elem/screenshot browser)
@@ -166,14 +166,15 @@
       (let [[title episodes] (fetch-program-data browser (program-url prog))]
         (if-not (empty? episodes)
           (do
-            (info (str "Found " (count episodes)) " episodes available.")
+            (info (str "Found " (count episodes) " episodes available."))
             (cond
               (opts :date) nil ;; soon
               :else
               (do
                 (info (str "Fetching latest program"))
                 (fetch-program-episode browser (first episodes)))))
-          (fatal (str "No episodes found!")))))))
+          (fatal (str "No episodes found!"))))))
+  browser)
 
 (defn fetch-programs
   "Main driving function."
@@ -184,7 +185,8 @@
     (info (str "Fetching " req-programs " from " audio-port-url " using configuration from " config-file))
     (with-browser [browser (make-browser)]
       (-> (login browser (config :credentials))
-          (fetch-program-files program-list req-programs opts)))))
+          (fetch-program-files program-list req-programs opts)
+          logout))))
 
 (defn -main
   [& args]
