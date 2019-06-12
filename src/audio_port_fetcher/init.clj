@@ -37,7 +37,9 @@
       ;; custom validation on arguments
       (and (> (count arguments) 1)
            (#{"fetch"} (first arguments)))
-      {:action (first arguments) :options options :programs (set (map keyword (rest arguments)))}
+      {:action (first arguments)
+       :options options
+       :programs (set (map #(keyword (string/replace % #"(^:)" "")) (rest arguments)))}
       :else ; failed custom validation => exit with usage summary
       {:exit-message (usage summary)})))
 
