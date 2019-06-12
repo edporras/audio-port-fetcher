@@ -171,7 +171,7 @@
   "Downloads the audio files from the requested programs."
   [browser config-data-map req-programs opts]
   (doseq [program-code req-programs]
-    (info (str "Processing program code '" program-code "'"))
+    (info "Processing program code" program-code)
     (if-let [prog (config-data-map program-code)]
       (let [[title episodes] (fetch-program-data browser (program-url prog))]
         (if-not (empty? episodes)
@@ -180,9 +180,9 @@
             (cond
               (opts :date) nil ;; TODO: add suppport
               :else
-              (do
-                (info (str "Fetching latest program"))
-                (fetch-program-episode browser (first episodes)))))
+              (let [latest (first episodes)]
+                (info (str "Fetching latest program dated " (:date latest)))
+                (fetch-program-episode browser latest))))
           (fatal (str "No episodes found!"))))
       (warn "Program code '" program-code "' not found in config.")))
   browser)
