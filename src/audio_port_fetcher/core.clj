@@ -178,14 +178,13 @@
 
 (defn fetch-programs
   "Main driving function."
-  [req-programs opts]
-  (let [config-file  (or (:config opts) default-config-file)
-        config       (read-config config-file)
-        program-list (config :programs)]
-    (info (str "Fetching " req-programs " from " audio-port-url " using configuration from " config-file))
+  [req-program-codes opts]
+  (let [config-file                    (or (:config opts) default-config-file)
+        {:keys [credentials programs]} (read-config config-file)]
+    (info (str "Fetching " req-program-codes " from " audio-port-url " using configuration from " config-file))
     (with-browser [browser (make-browser)]
-      (-> (login browser (config :credentials))
-          (fetch-program-files program-list req-programs opts)
+      (-> (login browser credentials)
+          (fetch-program-files programs req-program-codes opts)
           logout))))
 
 (defn -main
