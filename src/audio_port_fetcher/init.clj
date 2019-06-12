@@ -1,22 +1,25 @@
 (ns audio-port-fetcher.init
-  (:require [clojure.string        :as string]
-            [clojure.tools.cli     :refer [parse-opts]]
-            [taoensso.timbre       :as timbre :refer [trace info warn error fatal]])
+  (:require [clojure.java.io         :as io]
+            [clojure.string          :as string]
+            [clojure.tools.cli       :refer [parse-opts]]
+            [taoensso.timbre         :as timbre :refer [trace info warn error fatal]])
   (:gen-class))
 
 (def cli-options
-  [["-h" "--help"]])
+  [["-c" "--config PATH-TO-CONFIG" "Specify the configuration file to use instead of the default."
+    :validate [#(.exists (io/file %)) "File not found."]]
+   ["-h" "--help"]])
 
 (defn- usage [options-summary]
   (->> ["AudioPort.org Program Fetcher"
         ""
-        "Usage: audio-port-fetcher [options] action"
-        ""
-        "Options:"
-        options-summary
+        "Usage: audio-port-fetcher action [options] <program codes>"
         ""
         "Actions:"
-        "  fetch    Fetch a program's episode audio file."]
+        "  fetch    Fetch a program's episode audio file."
+        ""
+        "Options:"
+        options-summary]
        (string/join \newline)))
 
 (defn- error-msg [errors]
@@ -49,8 +52,8 @@
 
 (comment
 
-  (let [arg-list ["fetch" "rnrh" ":wv"]]
+  (let [arg-list ["fetch" "-c" "/tmp/test.edn" "rnrh" ":wv"]]
     (let [{:keys [action options programs exit-message ok?]} (validate-args arg-list)]
-      programs))
+      options))
 
   )

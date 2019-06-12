@@ -14,7 +14,7 @@
   (:gen-class))
 
 (def audio-port-url "https://www.audioport.org/")
-(def default-config-file (io/resource "config.edn"))
+(def default-config-file (io/file (str (System/getProperty "user.home") "/.audioportfetcher")))
 
 (defn read-config
   "Opens the edn configuration."
@@ -162,9 +162,10 @@
 (defn fetch-programs
   "Main driving function."
   [req-programs opts]
-  (let [config       (read-config default-config-file)
+  (let [config-file  (or (:config opts) default-config-file)
+        config       (read-config config-file)
         program-list (config :programs)]
-    (info (str "Fetching " req-programs " from " audio-port-url))
+    (info (str "Fetching " req-programs " from " audio-port-url " using configuration from " config-file))
     (with-browser [browser (make-browser)]
       (-> (login browser (config :credentials))
           (fetch-program-files program-list req-programs opts)))))

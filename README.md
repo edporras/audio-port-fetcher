@@ -9,11 +9,15 @@ fetch audio episode files on a regular basis.
 
 ## Usage
 
-    $ java -jar audio-port-fetcher-0.1.0-standalone.jar fetch [program-codes]
+    $ java -jar audio-port-fetcher-0.1.0-standalone.jar <action> [options] <program-codes>
 
-## Options
+### Actions
 
-For the time being, `fetch` is the only available option.
+* `fetch`: Downloads an audio file for the specified programs.
+
+### Options
+
+* `-c`, `--config`: Specify an alternate configuration file.
 
 ## Configuration
 
@@ -45,19 +49,21 @@ from audioport.org: "Ralph Nader Radio Hour" and "The Michael Slate Show":
 }
 ```
 
-The abbreviated codes selected are the choice of the user but the
+The abbreviated codes selected are user-selectable but the
 `:pub_title` field must exactly match (including capitalization) the
-title of the show on audioport.org.
+title of the program on audioport.org.
+
+`audio-port-fetcher` expects to find the configuration at
+`~/.audioportfetcher`.
 
 ## Examples
 
 `audio-port-fetcher` does not automatically fetch all the
 programs. Rather, it is invoked with one of the abbreviated program
 codes from the configuration file. Given the sample above, to fetch
-the latest episode of Ralph Nader's show, running the command:
+the latest episode of Ralph Nader's program, running the command:
 
     $ java -jar audio-port-fetcher-0.1.0-standalone.jar fetch rn
 
 Will produce the MP3 of the latest program in the current
 filesystem's directory.
-
