@@ -67,18 +67,34 @@
        ring/form-encode
        (str audio-port-url "?op=series&series=")))
 
+(def content-disposition-file-pattern (re-pattern "filename=([\\w]+\\.[\\p{Alnum}]+)"))
+(defn resp->filename
+  "Extract the filename from the response headers. Generates a sha-256 name is filename is not found."
+  [headers body]
+  (if-let [content-disposition (get headers "Content-Disposition")]
+    (last (re-find content-disposition-file-pattern content-disposition))
+    ;; name is not in content-disposition. Try to guess extension from
+    ;; content-type. I think it's all MP3s but throw otherwise and
+    ;; I'll add as I find them.
+    (let [content-type (get headers "Content-Type")
+          ext          (case content-type
+                         "audio/mpeg" ".mp3"
+                         (throw (Exception. (str "Unhandled content type. Please report to developer. Headers: " headers))))]
+      (warn "No content-disposition found in headers. Using sha-256-based name.")
+      (str (sha-256 body) ext))))
+
 (defn download-file
   "Attemps to download the binary. If status code is 200, it is saved to disk."
   [url cookies]
   (info (str "Downloading audio file from '" url "'"))
-  (let [req (client/get url {:as :byte-array
-                             :throw-exceptions false
-                             :redirect-strategy :lax
-                             :cookies cookies})]
-    (if (= 200 (:status req))
-      (let [body     (:body req)
-            filename (str (sha-256 body) ".mp3")] ;; TODO: mime-type for extension
-        (info (str "Saving file to '" filename "'"))
+  (let [resp (client/get url {:as :byte-array
+                              :throw-exceptions false
+                              :redirect-strategy :lax
+                              :cookies cookies})]
+    (if (= 200 (:status resp))
+      (let [body     (:body resp)
+            filename (resp->filename (:headers resp) body)]
+        (info (str "Saving file to '" filename))
         (io/copy body (io/file filename)))
       (fatal (str "Unable to download file from URL '" url "'")))))
 
