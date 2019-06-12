@@ -1,4 +1,4 @@
-(defproject audio-port-fetcher "0.1.0"
+(defproject audio-port-fetcher "0.1.1"
   :description "Audio Port Program Fetcher"
   :url "https://github.com/edporras/audio-port-fetcher"
   :license {:name "MIT"
