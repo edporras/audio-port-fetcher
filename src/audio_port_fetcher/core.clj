@@ -144,20 +144,20 @@
 (defn fetch-program-files
   "Downloads the audio files from the requested programs."
   [browser config-data-map req-programs opts]
-  (let [prog (config-data-map (first req-programs)) ;; TODO: process more than one request
-        url  (program-url prog)]
-    (info (str "Requested program '" (:pub_title prog) "'"))
-    (let [[title episodes] (fetch-program-data browser url)]
-      (if-not (empty? episodes)
-        (do
-          (info (str "Found " (count episodes)) " episodes available.")
-          (cond
-            (opts :date) nil ;; soon
-            :else
-            (do
-              (info (str "Fetching latest program"))
-              (fetch-program-episode browser (first episodes)))))
-        (fatal (str "No episodes found!"))))))
+  (doseq [program-code req-programs]
+    (let [prog (config-data-map program-code)]
+      (info (str "Requested program '" (:pub_title prog) "'"))
+      (let [[title episodes] (fetch-program-data browser (program-url prog))]
+        (if-not (empty? episodes)
+          (do
+            (info (str "Found " (count episodes)) " episodes available.")
+            (cond
+              (opts :date) nil ;; soon
+              :else
+              (do
+                (info (str "Fetching latest program"))
+                (fetch-program-episode browser (first episodes)))))
+          (fatal (str "No episodes found!")))))))
 
 (defn fetch-programs
   "Main driving function."
