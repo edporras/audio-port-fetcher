@@ -17,10 +17,18 @@
 (def default-config-file (io/file (str (System/getProperty "user.home") "/.audioportfetcher")))
 
 (defn read-config
-  "Opens the edn configuration."
+  "Opens the edn configuration and checks that the read object looks valid."
   [file]
-  (with-open [r (io/reader file)]
-    (edn/read (java.io.PushbackReader. r))))
+  (let [{:keys [credentials programs] :as config-data} (with-open [r (io/reader file)]
+                                                         (edn/read (java.io.PushbackReader. r)))]
+    (if (and (and credentials programs)
+             (every? #(contains? credentials %) #{:username :password})
+             (not-empty programs)
+             (every? (fn [[_ data]] (contains? data :pub_title)) programs))
+      config-data
+      (throw (Exception. (str "Invalid configuration format. Ensure the `:credentials` "
+                              "block carries both `:username` and `:password` strings "
+                              "and all entries in `:programs` have a `:pub_title`."))))))
 
 (defn screenshot
   "Take a screenshot and save it to the CWD."
