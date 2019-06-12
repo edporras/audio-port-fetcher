@@ -46,10 +46,6 @@
       :else ; failed custom validation => exit with usage summary
       {:exit-message (usage summary)})))
 
-(defn exit [status msg]
-  (fatal msg)
-  (System/exit status)) ;; TODO: disable on repl
-
 (comment
 
   (let [arg-list ["fetch" "-c" "/tmp/test.edn" "rnrh" ":wv"]]

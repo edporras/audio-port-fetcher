@@ -10,7 +10,7 @@
             [sparkledriver.cookies   :refer [browser-cookies->map]]
             [sparkledriver.browser   :refer [with-browser make-browser fetch! execute-script]]
             [taoensso.timbre         :as timbre :refer [trace info warn error fatal]]
-            [audio-port-fetcher.init :refer [validate-args exit]])
+            [audio-port-fetcher.init :refer [validate-args]])
   (:gen-class))
 
 (def audio-port-url "https://www.audioport.org/")
@@ -201,10 +201,12 @@
 (defn -main
   [& args]
   (let [{:keys [action options programs exit-message ok?]} (validate-args args)]
-    (if exit-message
-      (exit (if ok? 0 1) exit-message)
+    (if-not exit-message
       (case action
-        "fetch" (fetch-programs programs options)))))
+        "fetch" (fetch-programs programs options))
+      (do ;; error validating args
+        (fatal exit-message)
+        (System/exit (if ok? 0 1))))))
 
 (comment
   ;; repl testing
