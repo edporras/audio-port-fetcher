@@ -178,7 +178,10 @@
           (do
             (info (str "Found " (count episodes) " episodes available."))
             (cond
-              (opts :date) nil ;; TODO: add suppport
+              (opts :date) (let [fetch-date (:date opts)]
+                             (info (str "Fetching programs dated " fetch-date))
+                             (doseq [ep (filter #(when (= (:date %) fetch-date) %) episodes)]
+                               (fetch-program-episode browser ep)))
               :else
               (let [latest (first episodes)]
                 (info (str "Fetching latest program dated " (:date latest)))
@@ -217,8 +220,8 @@
       (login (config :credentials)))
 
   (def rows (->> ((config :programs) :rnrh)
-                 program-url
-                 (fetch-program-data browser)))
+                    program-url
+                    (fetch-program-data browser)))
   (count rows)
   (def episodes (last rows))
 

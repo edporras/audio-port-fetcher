@@ -2,11 +2,16 @@
   (:require [clojure.java.io         :as io]
             [clojure.string          :as string]
             [clojure.tools.cli       :refer [parse-opts]]
+            [clj-time.format         :as time]
             [taoensso.timbre         :as timbre :refer [trace info warn error fatal]])
   (:gen-class))
 
+(def date-fmt (time/formatter :date))
+
 (def cli-options
-  [["-c" "--config PATH-TO-CONFIG" "Specify the configuration file to use instead of the default."
+  [["-d" "--date YYYY-MM-DD" "Specify the episode date to fetch."
+    :validate [#(try (time/parse date-fmt %) (catch Exception e false)) "Invalid date."]]
+   ["-c" "--config PATH-TO-CONFIG" "Specify the configuration file to use instead of the default."
     :validate [#(.exists (io/file %)) "File not found."]]
    ["-h" "--help"]])
 
@@ -48,7 +53,7 @@
 
 (comment
 
-  (let [arg-list ["fetch" "-c" "/tmp/test.edn" "rnrh" ":wv"]]
+  (let [arg-list ["fetch" "-d" "2018-01-15" "rnrh" ":wv"]]
     (let [{:keys [action options programs exit-message ok?]} (validate-args arg-list)]
       options))
 

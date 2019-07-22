@@ -7,6 +7,7 @@
                  [org.clojure/clojure "1.10.0"]
                  [org.clojure/tools.cli "0.4.2"]
                  [clj-http "3.10.0"]
+                 [clj-time "0.15.0"]
                  [digest "1.4.9"]
 
                  [com.taoensso/timbre "4.10.0"]
