@@ -82,7 +82,7 @@
 
 (def content-disposition-file-pattern (re-pattern "filename=([\\w]+\\.[\\p{Alnum}]+)"))
 (defn resp->filename
-  "Extract the filename from the response headers. Generates a sha-256 name is filename is not found."
+  "Extract the filename from the response headers. Generates a sha-256 name if filename is not found."
   [headers body]
   (if-let [content-disposition (get headers "Content-Disposition")]
     (last (re-find content-disposition-file-pattern content-disposition))
@@ -151,21 +151,23 @@
 (defn fetch-program-data
   "Navigates to the program's page and extracts the episode
   listing (first page) + title and returns an array in the format
-  `[title [ep0_map ep1_map ... epn_map]]`."
+  `[[ep0_map ep1_map ... epn_map] title]`."
   [browser program-url]
   (info (str "navigating to URL '" program-url "'"))
   (let [rows  (-> (fetch! browser program-url)
-                  (elem/find-by-xpath* "//tr[contains(@class, 'boxSeparate')]"))
-        title (read-program-title browser)]
-    (info (str "Extracted program name as '" title "'"))
-    [title (->> rows
-                (partition 2)
-                (mapv (fn [row]
-                        (let [[producer date length] (row->audio-file-info row)]
-                          {:url (row->audio-file-url row)
-                           :producer producer
-                           :date date
-                           :length length}))))]))
+                  (elem/find-by-xpath* "//tr[contains(@class, 'boxSeparate')]"))]
+    (when-not (empty? rows)
+      (let [title   (read-program-title browser)
+            ep-data (->> rows
+                         (partition 2)
+                         (mapv (fn [row]
+                                 (let [[producer date length] (row->audio-file-info row)]
+                                   {:url (row->audio-file-url row)
+                                    :producer producer
+                                    :date date
+                                    :length length}))))]
+        (info (str "Extracted program name as '" title "'"))
+        [ep-data title]))))
 
 (defn fetch-program-files
   "Downloads the audio files from the requested programs."
@@ -173,20 +175,19 @@
   (doseq [program-code req-programs]
     (info "Processing program code" program-code)
     (if-let [prog (config-data-map program-code)]
-      (let [[title episodes] (fetch-program-data browser (program-url prog))]
-        (if-not (empty? episodes)
-          (do
-            (info (str "Found " (count episodes) " episodes available."))
-            (cond
-              (opts :date) (let [fetch-date (:date opts)]
-                             (info (str "Fetching programs dated " fetch-date))
-                             (doseq [ep (filter #(when (= (:date %) fetch-date) %) episodes)]
-                               (fetch-program-episode browser ep)))
-              :else
-              (let [latest (first episodes)]
-                (info (str "Fetching latest program dated " (:date latest)))
-                (fetch-program-episode browser latest))))
-          (fatal (str "No episodes found!"))))
+      (if-let [episodes (-> (fetch-program-data browser (program-url prog))
+                            first)] ; not using title yet
+        (do
+          (cond
+            (opts :date) (let [fetch-date (:date opts)]
+                           (info (str "Fetching programs dated " fetch-date))
+                           (doseq [ep (filter #(when (= (:date %) fetch-date) %) episodes)]
+                             (fetch-program-episode browser ep)))
+            :else
+            (let [latest (first episodes)]
+              (info (str "Fetching latest program dated " (:date latest)))
+              (fetch-program-episode browser latest))))
+        (fatal (str "No episodes found!")))
       (warn "Program code '" program-code "' not found in config.")))
   browser)
 
