@@ -144,23 +144,27 @@
       (string/replace "Results from Series:" "")
       trim-text))
 
+(defn- rows->episode-data
+  "Groups all episode data from a program's page into a map."
+  [rows]
+  (->> rows
+       (partition 2)
+       (mapv (fn [row]
+               (let [[producer date length] (row->audio-file-info row)]
+                 {:url (row->audio-file-url row)
+                  :producer producer
+                  :date date
+                  :length length})))))
+
 (defn- fetch-program-data-using-search
-  ""
+  "Uses `:pub_title` text to do a search."
   [browser pub_title]
   (info (str "Looking for program using search text '" pub_title "'"))
   (elem/send-text! (elem/find-by-xpath browser "//input[@name='searchtext']") pub_title)
   (elem/click! (elem/find-by-xpath browser "//input[@name='submit']"))
   (let [rows (elem/find-by-xpath* browser "//tr[contains(@class, 'boxSeparate')]")]
     (if-not (empty? rows)
-      (let [ep-data (->> rows
-                         (partition 2)
-                         (mapv (fn [row]
-                                 (let [[producer date length] (row->audio-file-info row)]
-                                   {:url (row->audio-file-url row)
-                                    :producer producer
-                                    :date date
-                                    :length length}))))]
-        [ep-data (read-program-title browser)])
+      [(rows->episode-data rows) (read-program-title browser)]
       [])))
 
 (defn- fetch-program-data
@@ -172,17 +176,9 @@
   (let [rows (-> (fetch! browser (program-url program))
                  (elem/find-by-xpath* "//tr[contains(@class, 'boxSeparate')]"))]
     (if-not (empty? rows)
-      (let [title   (read-program-title browser)
-            ep-data (->> rows
-                         (partition 2)
-                         (mapv (fn [row]
-                                 (let [[producer date length] (row->audio-file-info row)]
-                                   {:url (row->audio-file-url row)
-                                    :producer producer
-                                    :date date
-                                    :length length}))))]
+      (let [title (read-program-title browser)]
         (info (str "Extracted program name as '" title "'"))
-        [ep-data title])
+        [(rows->episode-data rows) title])
       (fetch-program-data-using-search browser (:pub_title program)))))
 
 (defn- fetch-program-files
