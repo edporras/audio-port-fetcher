@@ -65,13 +65,9 @@
     (elem/click! logout)))
 
 (defn program-url
-  "Assembles the URL program's main page. If a custom path is configured
-  with the `:ap_uri` value, use that. Otherwise, base it on the
-  `:pub_title`."
+  "Assembles the program's main page URL based on `:pub_title`."
   [prog]
-  (->> (if-let [prog-url-substr (prog :ap_uri)]
-         prog-url-substr
-         (prog :pub_title))
+  (->> (prog :pub_title)
        ring/form-encode
        (str audio-port-url "?op=series&series=")))
 
@@ -148,15 +144,34 @@
       (string/replace "Results from Series:" "")
       trim-text))
 
+(defn fetch-program-data-using-search
+  ""
+  [browser pub_title]
+  (info (str "Looking for program using search text '" pub_title "'"))
+  (elem/send-text! (elem/find-by-xpath browser "//input[@name='searchtext']") pub_title)
+  (elem/click! (elem/find-by-xpath browser "//input[@name='submit']"))
+  (let [rows (elem/find-by-xpath* browser "//tr[contains(@class, 'boxSeparate')]")]
+    (if-not (empty? rows)
+      (let [ep-data (->> rows
+                         (partition 2)
+                         (mapv (fn [row]
+                                 (let [[producer date length] (row->audio-file-info row)]
+                                   {:url (row->audio-file-url row)
+                                    :producer producer
+                                    :date date
+                                    :length length}))))]
+        [ep-data (read-program-title browser)])
+      [])))
+
 (defn fetch-program-data
   "Navigates to the program's page and extracts the episode
   listing (first page) + title and returns an array in the format
   `[[ep0_map ep1_map ... epn_map] title]`."
-  [browser program-url]
-  (info (str "navigating to URL '" program-url "'"))
-  (let [rows  (-> (fetch! browser program-url)
-                  (elem/find-by-xpath* "//tr[contains(@class, 'boxSeparate')]"))]
-    (when-not (empty? rows)
+  [browser program]
+  (info (str "navigating to URL '" (program-url program) "'"))
+  (let [rows (-> (fetch! browser (program-url program))
+                 (elem/find-by-xpath* "//tr[contains(@class, 'boxSeparate')]"))]
+    (if-not (empty? rows)
       (let [title   (read-program-title browser)
             ep-data (->> rows
                          (partition 2)
@@ -167,7 +182,8 @@
                                     :date date
                                     :length length}))))]
         (info (str "Extracted program name as '" title "'"))
-        [ep-data title]))))
+        [ep-data title])
+      (fetch-program-data-using-search browser (:pub_title program)))))
 
 (defn fetch-program-files
   "Downloads the audio files from the requested programs."
@@ -175,18 +191,17 @@
   (doseq [program-code req-programs]
     (info "Processing program code" program-code)
     (if-let [prog (config-data-map program-code)]
-      (if-let [episodes (-> (fetch-program-data browser (program-url prog))
+      (if-let [episodes (-> (fetch-program-data browser prog)
                             first)] ; not using title yet
-        (do
-          (cond
-            (opts :date) (let [fetch-date (:date opts)]
-                           (info (str "Fetching programs dated " fetch-date))
-                           (doseq [ep (filter #(when (= (:date %) fetch-date) %) episodes)]
-                             (fetch-program-episode browser ep)))
-            :else
-            (let [latest (first episodes)]
-              (info (str "Fetching latest program dated " (:date latest)))
-              (fetch-program-episode browser latest))))
+        (cond
+          (opts :date) (let [fetch-date (:date opts)]
+                         (info (str "Fetching programs dated " fetch-date))
+                         (doseq [ep (filter #(when (= (:date %) fetch-date) %) episodes)]
+                           (fetch-program-episode browser ep)))
+          :else
+          (let [latest (first episodes)]
+            (info (str "Fetching latest program dated " (:date latest)))
+            (fetch-program-episode browser latest)))
         (fatal (str "No episodes found!")))
       (warn "Program code '" program-code "' not found in config.")))
   browser)
@@ -221,8 +236,8 @@
       (login (config :credentials)))
 
   (def rows (->> ((config :programs) :rnrh)
-                    program-url
-                    (fetch-program-data browser)))
+                 ;;program-url
+                 (fetch-program-data browser)))
   (count rows)
   (def episodes (last rows))
 
