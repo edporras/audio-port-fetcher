@@ -16,7 +16,7 @@
 (def audio-port-url "https://www.audioport.org/")
 (def default-config-file (io/file (str (System/getProperty "user.home") "/.audioportfetcher")))
 
-(defn read-config
+(defn- read-config
   "Opens the edn configuration and checks that the read object looks valid."
   [file]
   (let [{:keys [credentials programs] :as config-data} (with-open [r (io/reader file)]
@@ -30,19 +30,19 @@
                               "block carries both `:username` and `:password` strings "
                               "and all entries in `:programs` have a `:pub_title`."))))))
 
-(defn screenshot
+(defn- screenshot
   "Take a screenshot and save it to the CWD."
   [browser]
   (-> (elem/screenshot browser)
       io/file
       (io/copy (io/file "screenshot.png"))))
 
-(defn logged-in?
+(defn- logged-in?
   "If there's a 'Logout' link, we're logged in."
   [browser]
   (some? (first (elem/find-by-xpath* browser "//a[text()='Logout']"))))
 
-(defn login
+(defn- login
   "Performs the login process and re-fetches the main page."
   [browser credentials]
   ;; go to the login page
@@ -59,7 +59,7 @@
   (elem/click! (first (elem/find-by-xpath* browser "//a[text()='Home Page']")))
   browser)
 
-(defn logout
+(defn- logout
   [browser]
   (when-let [logout (first (elem/find-by-xpath* browser "//a[text()='Logout']"))]
     (elem/click! logout)))
@@ -92,7 +92,7 @@
       (warn "No content-disposition found in headers. Using sha-256-based name.")
       (str (sha-256 body) ext))))
 
-(defn download-file
+(defn- download-file
   "Attemps to download the binary. If status code is 200, it is saved to disk."
   [url cookies]
   (info (str "Downloading audio file from '" url "'"))
@@ -107,14 +107,14 @@
         (io/copy body (io/file filename)))
       (fatal (str "Unable to download file from URL '" url "'")))))
 
-(defn row->audio-file-url
+(defn- row->audio-file-url
   "Extract the URL from the row pair containing an episode's information."
   [[sub-row-1 _]]
   (-> (elem/find-by-xpath* sub-row-1 "td[contains(@class, 'result_info')]//a")
       first
       (elem/attr "href")))
 
-(defn row->audio-file-info
+(defn- row->audio-file-info
   "Extract the producer, date, and length strings from the row pair
   containing an episode's information. Returns a vector in the
   format '[producer date length]'."
@@ -123,7 +123,7 @@
        (drop 1) ;; got four cells, first is empty for spacing
        (mapv #(trim-text (elem/text %)))))
 
-(defn fetch-program-episode
+(defn- fetch-program-episode
   "Fetches the episode in the given data."
   [browser episode-data]
   (fetch! browser (:url episode-data))
@@ -135,7 +135,7 @@
       (elem/attr "href")
       (download-file (browser-cookies->map browser))))
 
-(defn read-program-title
+(defn- read-program-title
   "Reads the program's title from the page's div with class `content_title`."
   [browser]
   (-> (elem/find-by-xpath* browser "//div[@id='content_title']")
@@ -144,7 +144,7 @@
       (string/replace "Results from Series:" "")
       trim-text))
 
-(defn fetch-program-data-using-search
+(defn- fetch-program-data-using-search
   ""
   [browser pub_title]
   (info (str "Looking for program using search text '" pub_title "'"))
@@ -163,7 +163,7 @@
         [ep-data (read-program-title browser)])
       [])))
 
-(defn fetch-program-data
+(defn- fetch-program-data
   "Navigates to the program's page and extracts the episode
   listing (first page) + title and returns an array in the format
   `[[ep0_map ep1_map ... epn_map] title]`."
@@ -185,7 +185,7 @@
         [ep-data title])
       (fetch-program-data-using-search browser (:pub_title program)))))
 
-(defn fetch-program-files
+(defn- fetch-program-files
   "Downloads the audio files from the requested programs."
   [browser config-data-map req-programs opts]
   (doseq [program-code req-programs]
@@ -206,7 +206,7 @@
       (warn "Program code '" program-code "' not found in config.")))
   browser)
 
-(defn fetch-programs
+(defn- fetch-programs
   "Main driving function."
   [req-program-codes opts]
   (let [config-file                    (or (:config opts) default-config-file)
