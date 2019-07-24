@@ -2,12 +2,26 @@
   (:require [clojure.java.io         :as io]
             [clojure.string          :as string]
             [clojure.tools.cli       :refer [parse-opts]]
+            [clojure.edn             :as edn]
             [clj-time.format         :as time]
             [taoensso.timbre         :as timbre :refer [trace info warn error fatal]])
   (:gen-class))
 
-(def date-fmt (time/formatter :date))
+(defn read-config
+  "Opens the edn configuration and checks that the read object looks valid."
+  [file]
+  (let [{:keys [credentials programs] :as config-data} (with-open [r (io/reader file)]
+                                                         (edn/read (java.io.PushbackReader. r)))]
+    (if (and (and credentials programs)
+             (every? #(contains? credentials %) #{:username :password})
+             (not-empty programs)
+             (every? (fn [[_ data]] (contains? data :pub_title)) programs))
+      config-data
+      (throw (Exception. (str "Invalid configuration format. Ensure the `:credentials` "
+                              "block carries both `:username` and `:password` strings "
+                              "and all entries in `:programs` have a `:pub_title`."))))))
 
+(def date-fmt (time/formatter :date))
 (def cli-options
   [["-d" "--date YYYY-MM-DD" "Specify the episode date to fetch."
     :validate [#(try (time/parse date-fmt %) (catch Exception e false)) "Invalid date."]]

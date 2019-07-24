@@ -1,7 +1,6 @@
 (ns audio-port-fetcher.core
   (:require [clojure.java.io         :as io]
             [clojure.string          :as string]
-            [clojure.edn             :as edn]
             [clj-http.client         :as client]
             [clj-http.cookies        :as cookies]
             [digest                  :refer [sha-256]]
@@ -10,25 +9,11 @@
             [sparkledriver.cookies   :refer [browser-cookies->map]]
             [sparkledriver.browser   :refer [with-browser make-browser fetch! execute-script]]
             [taoensso.timbre         :as timbre :refer [trace info warn error fatal]]
-            [audio-port-fetcher.init :refer [validate-args]])
+            [audio-port-fetcher.init :refer [validate-args read-config]])
   (:gen-class))
 
 (def audio-port-url "https://www.audioport.org/")
 (def default-config-file (io/file (str (System/getProperty "user.home") "/.audioportfetcher")))
-
-(defn- read-config
-  "Opens the edn configuration and checks that the read object looks valid."
-  [file]
-  (let [{:keys [credentials programs] :as config-data} (with-open [r (io/reader file)]
-                                                         (edn/read (java.io.PushbackReader. r)))]
-    (if (and (and credentials programs)
-             (every? #(contains? credentials %) #{:username :password})
-             (not-empty programs)
-             (every? (fn [[_ data]] (contains? data :pub_title)) programs))
-      config-data
-      (throw (Exception. (str "Invalid configuration format. Ensure the `:credentials` "
-                              "block carries both `:username` and `:password` strings "
-                              "and all entries in `:programs` have a `:pub_title`."))))))
 
 (defn- screenshot
   "Take a screenshot and save it to the CWD."
@@ -159,13 +144,13 @@
 (defn- fetch-program-data-using-search
   "Uses `:pub_title` text to do a search."
   [browser pub_title]
-  (info (str "Looking for program using search text '" pub_title "'"))
+  (info (str "Searching for program using text '" pub_title "'"))
   (elem/send-text! (elem/find-by-xpath browser "//input[@name='searchtext']") pub_title)
   (elem/click! (elem/find-by-xpath browser "//input[@name='submit']"))
   (let [rows (elem/find-by-xpath* browser "//tr[contains(@class, 'boxSeparate')]")]
-    (if-not (empty? rows)
-      [(rows->episode-data rows) (read-program-title browser)]
-      [])))
+    (if (empty? rows)
+      []
+      [(rows->episode-data rows) (read-program-title browser)])))
 
 (defn- fetch-program-data
   "Navigates to the program's page and extracts the episode
@@ -175,11 +160,23 @@
   (info (str "navigating to URL '" (program-url program) "'"))
   (let [rows (-> (fetch! browser (program-url program))
                  (elem/find-by-xpath* "//tr[contains(@class, 'boxSeparate')]"))]
-    (if-not (empty? rows)
+    (if (empty? rows)
+      (do
+        (warn "Program page has no results (non-conventional URL?)")
+        (fetch-program-data-using-search browser (:pub_title program)))
       (let [title (read-program-title browser)]
         (info (str "Extracted program name as '" title "'"))
-        [(rows->episode-data rows) title])
-      (fetch-program-data-using-search browser (:pub_title program)))))
+        [(rows->episode-data rows) title]))))
+
+(defn- fetch-program-by-date
+  "Filters the episode list using the date option and fetches the resulting list."
+  [browser episodes fetch-date]
+  (info (str "Fetching programs dated " fetch-date))
+  (let [matched-eps (filter #(when (= (:date %) fetch-date) %) episodes)]
+    (if (empty? matched-eps)
+      (error "No episodes found matching date.")
+      (doseq [ep matched-eps]
+        (fetch-program-episode browser ep)))))
 
 (defn- fetch-program-files
   "Downloads the audio files from the requested programs."
@@ -190,10 +187,7 @@
       (if-let [episodes (-> (fetch-program-data browser prog)
                             first)] ; not using title yet
         (cond
-          (opts :date) (let [fetch-date (:date opts)]
-                         (info (str "Fetching programs dated " fetch-date))
-                         (doseq [ep (filter #(when (= (:date %) fetch-date) %) episodes)]
-                           (fetch-program-episode browser ep)))
+          (opts :date) (fetch-program-by-date browser episodes (:date opts))
           :else
           (let [latest (first episodes)]
             (info (str "Fetching latest program dated " (:date latest)))
