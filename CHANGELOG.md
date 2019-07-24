@@ -1,6 +1,13 @@
 # Change Log
 All notable changes to this project will be documented in this file. This change log follows the conventions of [keepachangelog.com](http://keepachangelog.com/).
 
+## 0.1.2 - 2019-07-24
+### Added
+* Support for date-based episode download using `-d` option.
+* Fallback to search for program using configured `:pub_title` if the
+  guessed URL returns no results.
+* Unit tests for some methods.
+
 ## 0.1.1 - 2019-06-12
 ### Changed
 * Configuration file now expected to be `~/.audioportfetcher`.

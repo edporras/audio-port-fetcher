@@ -1,0 +1,15 @@
+{
+ :credentials {
+  :username "your-audioport.org-username"
+  :password "your-audioport.org-password"
+  }
+ :programs {
+  :rn {
+   :pub_title "Ralph Nader Radio Hour"
+   }
+  :ms {
+   :pub_title "The Michael Slate Show"
+   }
+  }
+ }
+}
