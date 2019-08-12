@@ -51,8 +51,8 @@
 
 (defn program-url
   "Assembles the program's main page URL based on `:pub_title`."
-  [prog]
-  (->> (prog :pub_title)
+  [{title :pub_title}]
+  (->> title
        ring/form-encode
        (str audio-port-url "?op=series&series=")))
 
