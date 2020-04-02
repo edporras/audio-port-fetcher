@@ -1,10 +1,13 @@
 (ns audio-port-fetcher.core-test
-  (:require [clojure.test :refer :all]
-            [audio-port-fetcher.core :refer :all]))
+  (:require
+   [clojure.test            :refer [deftest is]]
+   [audio-port-fetcher.core :as sut]))
 
 (deftest program-url-test
   (let [prog {:pub_title "A test"}]
-    (is (= (program-url prog) "https://www.audioport.org/?op=series&series=A+test"))))
+    (is (= "https://www.audioport.org/?op=series&series=A+test"
+           (sut/program-url prog)))))
 
 (deftest trim-text-test
-  (is (= (trim-text "  This is a title   ") "This is a title")))
+  (is (= "This is a title"
+         (sut/trim-text "  This is a title   "))))

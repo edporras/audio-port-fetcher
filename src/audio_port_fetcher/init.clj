@@ -1,10 +1,11 @@
 (ns audio-port-fetcher.init
   (:require [clojure.java.io         :as io]
-            [clojure.string          :as string]
+            [clojure.string          :as str]
             [clojure.tools.cli       :refer [parse-opts]]
             [clojure.edn             :as edn]
             [clj-time.format         :as time]
-            [taoensso.timbre         :as timbre :refer [trace info warn error fatal]])
+            ;;[taoensso.timbre         :as timbre :refer [trace info warn error fatal]]
+            )
   (:gen-class))
 
 (defn read-config
@@ -24,7 +25,7 @@
 (def date-fmt (time/formatter :date))
 (def cli-options
   [["-d" "--date YYYY-MM-DD" "Specify the episode date to fetch."
-    :validate [#(try (time/parse date-fmt %) (catch Exception e false)) "Invalid date."]]
+    :validate [#(try (time/parse date-fmt %) (catch Exception _ false)) "Invalid date."]]
    ["-c" "--config PATH-TO-CONFIG" "Specify the configuration file to use instead of the default."
     :validate [#(.exists (io/file %)) "File not found."]]
    ["-h" "--help"]])
@@ -39,11 +40,11 @@
         ""
         "Options:"
         options-summary]
-       (string/join \newline)))
+       (str/join \newline)))
 
 (defn- error-msg [errors]
   (str "The following errors occurred while parsing your command:\n\n"
-       (string/join \newline errors)))
+       (str/join \newline errors)))
 
 (defn validate-args
   "Validate command line arguments. Either return a map indicating the program
@@ -61,7 +62,7 @@
            (#{"fetch"} (first arguments)))
       {:action (first arguments)
        :options options
-       :programs (set (map #(keyword (string/replace % #"(^:)" "")) (rest arguments)))}
+       :programs (set (map #(keyword (str/replace % #"(^:)" "")) (rest arguments)))}
       :else ; failed custom validation => exit with usage summary
       {:exit-message (usage summary)})))
 

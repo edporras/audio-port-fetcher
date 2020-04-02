@@ -1,0 +1,2 @@
+{:lint-as {sparkledriver.browser/with-browser clojure.core/let}
+ :skip-comments true}
