@@ -1,26 +1,21 @@
 (ns audio-port-fetcher.init
-  (:require [clojure.java.io         :as io]
+  (:require [audio-port-fetcher.spec :as spec]
+            [clojure.java.io         :as io]
+            [clojure.spec.alpha      :as s]
             [clojure.string          :as str]
             [clojure.tools.cli       :refer [parse-opts]]
             [clojure.edn             :as edn]
-            [clj-time.format         :as time]
-            ;;[taoensso.timbre         :as timbre :refer [trace info warn error fatal]]
-            )
+            [clj-time.format         :as time])
   (:gen-class))
 
 (defn read-config
   "Opens the edn configuration and checks that the read object looks valid."
   [file]
-  (let [{:keys [credentials programs] :as config-data} (with-open [r (io/reader file)]
-                                                         (edn/read (java.io.PushbackReader. r)))]
-    (if (and (and credentials programs)
-             (every? #(contains? credentials %) #{:username :password})
-             (not-empty programs)
-             (every? (fn [[_ data]] (contains? data :pub_title)) programs))
-      config-data
-      (throw (Exception. (str "Invalid configuration format. Ensure the `:credentials` "
-                              "block carries both `:username` and `:password` strings "
-                              "and all entries in `:programs` have a `:pub_title`."))))))
+  (let [config-data (with-open [r (io/reader file)]
+                      (edn/read (java.io.PushbackReader. r)))]
+    (assert (s/valid? ::spec/config config-data)
+            (s/explain-str ::spec/config config-data))
+    config-data))
 
 (def date-fmt (time/formatter :date))
 (def cli-options
