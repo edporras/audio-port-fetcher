@@ -200,7 +200,7 @@
   (let [config-file                    (or (:config opts) default-config-file)
         {:keys [credentials programs]} (init/read-config config-file)]
     (log/info (str "Fetching " req-program-codes " from " audio-port-url " using configuration from " config-file))
-    (with-browser [browser (make-browser)]
+    (with-browser [browser (make-browser :headless false)]
       (-> (login browser credentials)
           (fetch-program-files programs req-program-codes opts)
           logout))))
