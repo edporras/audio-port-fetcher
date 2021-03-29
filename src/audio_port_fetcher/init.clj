@@ -1,11 +1,12 @@
 (ns audio-port-fetcher.init
-  (:require [audio-port-fetcher.spec :as spec]
-            [clojure.java.io         :as io]
-            [clojure.spec.alpha      :as s]
-            [clojure.string          :as str]
-            [clojure.tools.cli       :refer [parse-opts]]
-            [clojure.edn             :as edn]
-            [clj-time.format         :as time])
+  (:require
+   [audio-port-fetcher.spec :as spec]
+   [clojure.java.io         :as io]
+   [clojure.spec.alpha      :as s]
+   [clojure.string          :as str]
+   [clojure.tools.cli       :refer [parse-opts]]
+   [clojure.edn             :as edn]
+   [java-time               :as jt])
   (:gen-class))
 
 (defn read-config
@@ -17,10 +18,9 @@
             (s/explain-str ::spec/config config-data))
     config-data))
 
-(def date-fmt (time/formatter :date))
 (def cli-options
   [["-d" "--date YYYY-MM-DD" "Specify the episode date to fetch."
-    :validate [#(try (time/parse date-fmt %) (catch Exception _ false)) "Invalid date."]]
+    :validate [#(try (jt/local-date "yyyy-MM-dd" %) (catch java.time.format.DateTimeParseException _ false)) "Invalid date."]]
    ["-c" "--config PATH-TO-CONFIG" "Specify the configuration file to use instead of the default."
     :validate [#(.exists (io/file %)) "File not found."]]
    ["-h" "--help"]])
